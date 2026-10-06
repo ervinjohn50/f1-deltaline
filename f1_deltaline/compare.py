@@ -36,6 +36,21 @@ def resample(distance, values, grid):
     return np.interp(grid, lap_fraction(distance), np.asarray(values, dtype=float))
 
 
+def integrate_distance(speed_kmh, seconds):
+    """Distance in metres travelled at each sample, from speed and time.
+
+    Uses the average of each pair of speed readings (trapezoid rule). FastF1's
+    own Distance multiplies each reading by the time since the previous one,
+    which undercounts under braking and overcounts under acceleration. The two
+    drivers' readings fall at different moments, so their errors differ and
+    show up as false spikes in the gap chart at slow corners.
+    """
+    speed = np.asarray(speed_kmh, dtype=float) / 3.6
+    seconds = np.asarray(seconds, dtype=float)
+    steps = (speed[1:] + speed[:-1]) / 2 * np.diff(seconds)
+    return np.concatenate([[0.0], np.cumsum(steps)])
+
+
 def time_delta(distance_a, time_a, distance_b, time_b, grid):
     """Running gap in seconds at each grid point: B's elapsed time minus A's.
 

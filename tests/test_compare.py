@@ -1,7 +1,7 @@
 import numpy as np
 
-from f1_deltaline.compare import (resample, sector_index, sector_times, sector_winners,
-                                  time_delta)
+from f1_deltaline.compare import (integrate_distance, resample, sector_index, sector_times,
+                                  sector_winners, time_delta)
 
 
 def test_constant_speed_gives_equal_sector_times():
@@ -66,3 +66,22 @@ def test_resample_onto_lap_grid():
     distance = np.array([0.0, 500.0, 1000.0])
     speed = np.array([100.0, 200.0, 300.0])
     assert np.allclose(resample(distance, speed, np.array([0, 0.25, 1])), [100, 150, 300])
+
+
+def test_integrate_distance_constant_speed():
+    seconds = np.linspace(0, 10, 41)
+    distance = integrate_distance(np.full(41, 180.0), seconds)  # 180 km/h = 50 m/s
+    assert distance[0] == 0
+    assert np.isclose(distance[-1], 500)
+
+
+def test_integrate_distance_is_exact_under_steady_braking():
+    # Braking from 300 to 100 km/h over 4 s, sampled every 0.25 s like real car data.
+    seconds = np.arange(0, 4.25, 0.25)
+    speed = np.linspace(300, 100, len(seconds))
+    expected = (300 + 100) / 2 / 3.6 * 4  # average speed x time = 222.2 m
+    assert np.isclose(integrate_distance(speed, seconds)[-1], expected)
+
+    # FastF1's method (each reading x time since the previous one) comes up metres short.
+    rectangle = np.sum(speed[1:] / 3.6 * np.diff(seconds))
+    assert expected - rectangle > 5

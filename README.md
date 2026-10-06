@@ -50,12 +50,23 @@ the first load of a session is slow and later loads are fast.
    along the lap. The gap at each point is B's elapsed time minus A's, so where
    the line rises A is gaining and where it falls B is.
 
+### Lap distance
+
+Lap distance is calculated from speed and time using the trapezoid rule (the
+average of each pair of speed readings). FastF1's built-in `Distance` instead
+multiplies each reading by the time since the previous one, which comes up
+several metres short under braking and long under acceleration. Because the
+two drivers' readings fall at different moments, those errors differ and show
+up as false spikes in the gap chart at slow corners. Switching to the trapezoid
+rule cut the worst spike at Monza 2024 (LEC vs NOR) from 0.18s to 0.135s.
+
 ### Known limitation
 
-Lap distance is calculated from each car's speed, so the two laps can drift
-slightly out of line, especially in heavy braking zones. This shows up as short
-spikes in the gap chart (e.g. into a chicane) that aren't real time gained or
-lost. The overall trend and the gap at the finish line are accurate.
+Some short spikes remain in slow corners (e.g. Monza turns 4–5). Car data
+arrives about four times a second, so at 300 km/h a car travels ~20 m between
+readings. Part of what's left may be real (different braking points and
+minimum speeds) and part is this sampling limit; the data can't fully tell them
+apart. The overall trend and the gap at the finish line are accurate.
 
 ## Tests
 

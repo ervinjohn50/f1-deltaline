@@ -4,6 +4,8 @@ from pathlib import Path
 
 import fastf1
 
+from f1_deltaline.compare import integrate_distance
+
 CACHE_DIR = Path(__file__).resolve().parent.parent / ".fastf1-cache"
 
 
@@ -28,7 +30,10 @@ def lap_telemetry(lap):
     tel = lap.get_telemetry()
     tel["Seconds"] = tel["Time"].dt.total_seconds()
     tel["Brake"] = tel["Brake"].astype(float)
-    return tel[["Distance", "X", "Y", "Seconds", "Speed", "Throttle", "Brake"]].dropna()
+    tel = tel[["X", "Y", "Seconds", "Speed", "Throttle", "Brake"]].dropna()
+    # Replace FastF1's Distance with a more accurate one; see integrate_distance.
+    tel["Distance"] = integrate_distance(tel["Speed"], tel["Seconds"])
+    return tel
 
 
 def corners(session):
