@@ -2,8 +2,12 @@
 
 See exactly where on track one driver was faster than another.
 
-F1 Deltaline loads two drivers' fastest laps, splits the lap into equal-length
-mini-sectors, and draws the circuit coloured by who was quicker in each one.
+F1 Deltaline loads two drivers' fastest laps and shows:
+
+- **Track map** coloured by who was quicker in each mini-sector, with corner numbers
+- **Gap chart**: the running time gap around the lap, so you can see where each
+  driver gained and lost time
+- **Speed, throttle and brake** for both drivers, lined up by distance
 
 ![Leclerc vs Norris, Monza 2024 qualifying](docs/example.png)
 
@@ -42,6 +46,16 @@ the first load of a session is slow and later loads are fast.
 3. **Split** the lap into equal mini-sectors and interpolate the time each
    driver reached every boundary. The difference is the time spent in that sector.
 4. **Colour** the track by the driver with the lower time in each sector.
+5. **Gap and traces**: resample both laps onto a shared grid of 1,000 points
+   along the lap. The gap at each point is B's elapsed time minus A's, so where
+   the line rises A is gaining and where it falls B is.
+
+### Known limitation
+
+Lap distance is calculated from each car's speed, so the two laps can drift
+slightly out of line, especially in heavy braking zones. This shows up as short
+spikes in the gap chart (e.g. into a chicane) that aren't real time gained or
+lost. The overall trend and the gap at the finish line are accurate.
 
 ## Tests
 

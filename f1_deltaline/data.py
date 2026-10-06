@@ -8,6 +8,7 @@ CACHE_DIR = Path(__file__).resolve().parent.parent / ".fastf1-cache"
 
 
 def load_session(year, event, session_type):
+    fastf1.set_log_level("WARNING")
     CACHE_DIR.mkdir(exist_ok=True)
     fastf1.Cache.enable_cache(str(CACHE_DIR))
     session = fastf1.get_session(year, event, session_type)
@@ -23,7 +24,24 @@ def fastest_lap(session, driver):
 
 
 def lap_telemetry(lap):
-    """Distance, X/Y position and lap time in seconds for one lap."""
+    """Distance, X/Y position, driver inputs and lap time in seconds for one lap."""
     tel = lap.get_telemetry()
     tel["Seconds"] = tel["Time"].dt.total_seconds()
-    return tel[["Distance", "X", "Y", "Seconds"]].dropna()
+    tel["Brake"] = tel["Brake"].astype(float)
+    return tel[["Distance", "X", "Y", "Seconds", "Speed", "Throttle", "Brake"]].dropna()
+
+
+def corners(session):
+    """Corner labels with their track distance and position, or [] if unavailable."""
+    try:
+        info = session.get_circuit_info()
+    except Exception:
+        return []
+    if info is None:
+        return []
+    return [
+        {"label": f"{int(c.Number)}{c.Letter if isinstance(c.Letter, str) else ''}",
+         "distance": c.Distance,
+         "x": c.X, "y": c.Y, "angle": c.Angle}
+        for c in info.corners.itertuples()
+    ]

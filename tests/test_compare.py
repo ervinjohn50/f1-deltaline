@@ -1,6 +1,7 @@
 import numpy as np
 
-from f1_deltaline.compare import sector_index, sector_times, sector_winners
+from f1_deltaline.compare import (resample, sector_index, sector_times, sector_winners,
+                                  time_delta)
 
 
 def test_constant_speed_gives_equal_sector_times():
@@ -33,3 +34,35 @@ def test_sector_index_covers_every_sector_and_clamps_the_end():
     idx = sector_index(np.linspace(0, 100, 11), 5)
     assert idx[0] == 0 and idx[-1] == 4
     assert set(idx) == {0, 1, 2, 3, 4}
+
+
+def test_time_delta_grows_steadily_when_a_is_always_faster():
+    distance = np.linspace(0, 1000, 201)
+    grid = np.linspace(0, 1, 11)
+    delta = time_delta(distance, distance / 50, distance, distance / 40, grid)  # 20 s vs 25 s
+    assert np.isclose(delta[0], 0)
+    assert np.isclose(delta[-1], 5)
+    assert np.allclose(delta, np.linspace(0, 5, 11))
+
+
+def test_time_delta_shows_b_gaining_back_in_second_half():
+    distance = np.linspace(0, 1000, 1001)
+    a_speed = np.where(distance < 500, 50.0, 25.0)  # A: 10 s + 20 s
+    b_speed = np.where(distance < 500, 25.0, 50.0)  # B: 20 s + 10 s
+    seconds = lambda speed: np.concatenate([[0], np.cumsum(np.diff(distance) / speed[1:])])
+    grid = np.array([0.0, 0.5, 1.0])
+    delta = time_delta(distance, seconds(a_speed), distance, seconds(b_speed), grid)
+    assert np.allclose(delta, [0, 10, 0], atol=0.05)  # A 10 s up at halfway, level at the end
+
+
+def test_time_delta_ignores_time_offset_at_lap_start():
+    distance = np.linspace(0, 1000, 50)
+    grid = np.linspace(0, 1, 5)
+    delta = time_delta(distance, 100 + distance / 50, distance, 7 + distance / 50, grid)
+    assert np.allclose(delta, 0)
+
+
+def test_resample_onto_lap_grid():
+    distance = np.array([0.0, 500.0, 1000.0])
+    speed = np.array([100.0, 200.0, 300.0])
+    assert np.allclose(resample(distance, speed, np.array([0, 0.25, 1])), [100, 150, 300])

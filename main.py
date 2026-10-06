@@ -10,11 +10,13 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from f1_deltaline.compare import sector_index, sector_times, sector_winners
-from f1_deltaline.data import fastest_lap, lap_telemetry, load_session
+from f1_deltaline.compare import (resample, sector_index, sector_times, sector_winners,
+                                  time_delta)
+from f1_deltaline.data import corners, fastest_lap, lap_telemetry, load_session
 from f1_deltaline.plot import driver_colors, plot_comparison
 
 OUTPUT_DIR = Path(__file__).resolve().parent / "output"
+GRID_POINTS = 1000  # points along the lap for the gap and input traces
 
 
 def parse_args():
@@ -47,15 +49,28 @@ def main():
     # Draw the track using driver A's line; colour each sample by its sector's winner.
     sample_winners = winners[sector_index(tels[0]["Distance"], args.sectors)]
 
+    # Shared grid along the lap, in metres of driver A's lap, for the gap and traces.
+    grid = np.linspace(0.0, 1.0, GRID_POINTS)
+    lap_length = tels[0]["Distance"].iloc[-1] - tels[0]["Distance"].iloc[0]
+    distance_m = grid * lap_length
+    delta = time_delta(tels[0]["Distance"], tels[0]["Seconds"],
+                       tels[1]["Distance"], tels[1]["Seconds"], grid)
+    traces = {
+        label: tuple(resample(t["Distance"], t[column], grid) for t in tels)
+        for label, column in [("Speed (km/h)", "Speed"), ("Throttle (%)", "Throttle"),
+                              ("Brake", "Brake")]
+    }
+
     won = np.bincount(winners, minlength=2)
     gap = lap_times[1] - lap_times[0]
     print(f"{drivers[0]}: {won[0]} mini-sectors  |  {drivers[1]}: {won[1]} mini-sectors")
     print(f"Lap time gap: {drivers[0]} {'ahead' if gap > 0 else 'behind'} by {abs(gap):.3f}s")
 
-    title = f"{session.event['EventName']} {session.event.year} · {session.name}\n" \
-            f"Fastest laps: who was quicker where"
-    fig = plot_comparison(tels[0], sample_winners, drivers,
-                          driver_colors(session, *drivers), lap_times, title)
+    title = f"{session.event['EventName']} {session.event.year} · {session.name} · " \
+            f"{drivers[0]} vs {drivers[1]}, fastest laps"
+    fig = plot_comparison(tels[0], sample_winners, distance_m, delta, traces, drivers,
+                          driver_colors(session, *drivers), lap_times, title,
+                          corners(session))
 
     OUTPUT_DIR.mkdir(exist_ok=True)
     out = OUTPUT_DIR / f"{args.year}_{session.event['EventName'].replace(' ', '_')}_{args.session}_{drivers[0]}_vs_{drivers[1]}.png"
