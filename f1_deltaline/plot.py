@@ -4,7 +4,7 @@ import fastf1.plotting
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.collections import LineCollection
-from matplotlib.gridspec import GridSpec
+from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
 from matplotlib.lines import Line2D
 
 FALLBACK_COLOR = "#e0e0e0"  # used when both drivers share a team colour
@@ -24,7 +24,7 @@ def driver_colors(session, driver_a, driver_b):
 
 
 def plot_comparison(track, sample_winners, distance_m, delta, traces,
-                    drivers, colors, lap_times, title, corners=()):
+                    labels, colors, legend_labels, title, corners=()):
     """Map on the left; gap, speed, throttle and brake stacked on the right.
 
     track: telemetry with X/Y for drawing the circuit.
@@ -32,6 +32,8 @@ def plot_comparison(track, sample_winners, distance_m, delta, traces,
     distance_m: shared x-axis in metres for the traces.
     delta: running gap in seconds (positive = driver A ahead).
     traces: {"Speed (km/h)": (values_a, values_b), ...}
+    labels: short name for each lap, e.g. "LEC" or "VER L5".
+    legend_labels: full legend text for each lap, including lap time.
     """
     fig = plt.figure(figsize=(16, 9), facecolor=BACKGROUND)
     # Gap chart first, then one row per trace; brake is on/off so it gets less height.
@@ -39,11 +41,14 @@ def plot_comparison(track, sample_winners, distance_m, delta, traces,
     grid = GridSpec(len(height_ratios), 2, figure=fig, width_ratios=[1, 1.35],
                     height_ratios=height_ratios, wspace=0.08, hspace=0.12)
 
-    draw_track(fig.add_subplot(grid[:, 0]), track, sample_winners, drivers, colors,
-               lap_times, corners)
+    # Left column: map on top, legend in its own row below so it never covers the track.
+    left = GridSpecFromSubplotSpec(2, 1, subplot_spec=grid[:, 0], height_ratios=[5, 1],
+                                   hspace=0)
+    draw_track(fig.add_subplot(left[0]), track, sample_winners, colors, corners)
+    draw_legend(fig.add_subplot(left[1]), colors, legend_labels)
 
     gap_ax = fig.add_subplot(grid[0, 1])
-    draw_delta(gap_ax, distance_m, delta, drivers, colors)
+    draw_delta(gap_ax, distance_m, delta, labels, colors)
     trace_axes = [fig.add_subplot(grid[i + 1, 1], sharex=gap_ax) for i in range(len(traces))]
     for ax, (label, (values_a, values_b)) in zip(trace_axes, traces.items()):
         ax.plot(distance_m, values_a, color=colors[0], lw=1.2)
@@ -66,7 +71,7 @@ def plot_comparison(track, sample_winners, distance_m, delta, traces,
     return fig
 
 
-def draw_track(ax, track, sample_winners, drivers, colors, lap_times, corners):
+def draw_track(ax, track, sample_winners, colors, corners):
     points = np.column_stack([track["X"], track["Y"]]).reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
     segment_colors = [colors[w] for w in sample_winners[:-1]]
@@ -84,17 +89,19 @@ def draw_track(ax, track, sample_winners, drivers, colors, lap_times, corners):
     ax.set_aspect("equal")
     ax.axis("off")
 
+
+def draw_legend(ax, colors, legend_labels):
+    ax.axis("off")
     handles = [
-        Line2D([0], [0], color=colors[i], lw=6,
-               label=f"{drivers[i]}  {format_lap_time(lap_times[i])}")
-        for i in range(2)
+        Line2D([0], [0], color=color, lw=6, label=label)
+        for color, label in zip(colors, legend_labels)
     ]
-    ax.legend(handles=handles, loc="lower right", facecolor=BACKGROUND, edgecolor="#444",
+    ax.legend(handles=handles, loc="center", facecolor=BACKGROUND, edgecolor="#444",
               labelcolor=TEXT, fontsize=11, title="Faster in mini-sector",
               title_fontsize=9).get_title().set_color(MUTED)
 
 
-def draw_delta(ax, distance_m, delta, drivers, colors):
+def draw_delta(ax, distance_m, delta, labels, colors):
     """Gap line, shaded in the colour of whichever driver is ahead."""
     ax.axhline(0, color=MUTED, lw=0.8)
     ax.fill_between(distance_m, delta, 0, where=delta >= 0, color=colors[0], alpha=0.35,
@@ -107,9 +114,9 @@ def draw_delta(ax, distance_m, delta, drivers, colors):
     # Keep zero roughly centred so "ahead" and "behind" read clearly.
     limit = max(np.abs(delta).max() * 1.15, 0.05)
     ax.set_ylim(-limit, limit)
-    ax.text(0.005, 0.95, f"{drivers[0]} ahead", transform=ax.transAxes, color=colors[0],
+    ax.text(0.005, 0.95, f"{labels[0]} ahead", transform=ax.transAxes, color=colors[0],
             fontsize=9, va="top", fontweight="bold")
-    ax.text(0.005, 0.05, f"{drivers[1]} ahead", transform=ax.transAxes, color=colors[1],
+    ax.text(0.005, 0.05, f"{labels[1]} ahead", transform=ax.transAxes, color=colors[1],
             fontsize=9, va="bottom", fontweight="bold")
 
 

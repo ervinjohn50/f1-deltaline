@@ -2,7 +2,8 @@
 
 See exactly where on track one driver was faster than another.
 
-F1 Deltaline loads two drivers' fastest laps and shows:
+F1 Deltaline loads two laps (each driver's fastest by default, or any laps you
+choose) and shows:
 
 - **Track map** coloured by who was quicker in each mini-sector, with corner numbers
 - **Gap chart**: the running time gap around the lap, so you can see where each
@@ -21,8 +22,18 @@ uv sync
 
 ## Usage
 
+Compare two drivers' fastest laps:
+
 ```bash
 uv run main.py --year 2024 --event Monza --session Q --drivers LEC NOR
+```
+
+List each driver's laps (lap time, tyre, in/out-laps, fastest), then compare
+specific ones:
+
+```bash
+uv run main.py --year 2024 --event Monza --session R --drivers LEC PIA --list-laps
+uv run main.py --year 2024 --event Monza --session R --drivers LEC PIA --laps 40 40
 ```
 
 | Option | Description |
@@ -31,8 +42,14 @@ uv run main.py --year 2024 --event Monza --session Q --drivers LEC NOR
 | `--event` | Event name or round number, e.g. `Monza` or `16` |
 | `--session` | `R`, `Q`, `S`, `FP1`, `FP2`, `FP3` (default `Q`) |
 | `--drivers` | Two driver abbreviations, e.g. `VER HAM` |
+| `--laps` | Lap number for each driver, or `fastest`, e.g. `--laps 12 fastest` (default: both fastest) |
+| `--list-laps` | List both drivers' laps and exit |
 | `--sectors` | Number of mini-sectors (default `25`) |
 | `--no-show` | Save the image without opening a window |
+
+In-laps and out-laps can be compared, but part of them is in the pit lane, so
+F1 Deltaline prints a warning. Laps without a lap time (usually out-laps in
+qualifying) can't be compared.
 
 Images are saved to `output/`. Session data is cached in `.fastf1-cache/`, so
 the first load of a session is slow and later loads are fast.
@@ -40,7 +57,7 @@ the first load of a session is slow and later loads are fast.
 ## How it works
 
 1. **Load** the session with [FastF1](https://github.com/theOehrly/Fast-F1) and
-   take each driver's fastest lap.
+   take the chosen lap for each driver (fastest by default).
 2. **Normalise** each lap's distance to 0–1, so laps of slightly different
    measured length line up.
 3. **Split** the lap into equal mini-sectors and interpolate the time each
