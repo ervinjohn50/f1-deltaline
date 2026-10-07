@@ -9,7 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      # setup-uv only publishes full version tags, not a short v10 tag.
+      - uses: astral-sh/setup-uv@v10.2.0
       # Installs the Python version from .python-version and the exact
       # packages from uv.lock; fails if the lock file is out of date.
       - run: uv sync --locked
