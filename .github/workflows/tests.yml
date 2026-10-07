@@ -1,0 +1,17 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+      # Installs the Python version from .python-version and the exact
+      # packages from uv.lock; fails if the lock file is out of date.
+      - run: uv sync --locked
+      # The tests use made-up laps, so they don't download any race data.
+      - run: uv run pytest -q

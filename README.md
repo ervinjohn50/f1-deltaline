@@ -1,5 +1,7 @@
 # F1 Deltaline
 
+[![tests](https://github.com/ervinjohn50/f1-deltaline/actions/workflows/tests.yml/badge.svg)](https://github.com/ervinjohn50/f1-deltaline/actions/workflows/tests.yml)
+
 See exactly where on track one driver was faster than another.
 
 F1 Deltaline loads two laps (each driver's fastest by default, or any laps you
@@ -52,6 +54,8 @@ Compare two laps by the same driver, e.g. worn mediums against new hards:
 ```bash
 uv run main.py --year 2024 --event Monza --session R --drivers LEC --laps 14 17
 ```
+
+![Leclerc on worn mediums vs new hards, Monza 2024 race](docs/example-race.png)
 
 | Option | Description |
 |---|---|
