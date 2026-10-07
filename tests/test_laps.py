@@ -5,7 +5,8 @@ import pytest
 from fastf1.core import Laps
 
 from f1_deltaline.data import describe_lap, is_pit_lap, pick_lap
-from main import parse_lap_choice
+from main import check_lap_choices, parse_lap_choice, resolve_drivers
+
 
 def seconds(values):
     """Timedeltas from seconds; None becomes 'no time' (NaT)."""
@@ -69,3 +70,24 @@ def test_parse_lap_choice():
     for bad in ["abc", "0", "-3", "1.5"]:
         with pytest.raises(argparse.ArgumentTypeError):
             parse_lap_choice(bad)
+
+
+def test_resolve_drivers():
+    assert resolve_drivers(["ver", "ham"]) == ["VER", "HAM"]
+    assert resolve_drivers(["ver"]) == ["VER", "VER"]
+    with pytest.raises(ValueError, match="one or two drivers"):
+        resolve_drivers(["VER", "HAM", "LEC"])
+
+
+def test_check_lap_choices_allows_different_laps_or_drivers():
+    check_lap_choices(["VER", "VER"], [5, 40])
+    check_lap_choices(["VER", "VER"], [None, 40])
+    check_lap_choices(["VER", "HAM"], [None, None])
+    check_lap_choices(["VER", "HAM"], [12, 12])
+
+
+def test_check_lap_choices_rejects_same_lap_twice():
+    with pytest.raises(ValueError, match="VER's fastest lap"):
+        check_lap_choices(["VER", "VER"], [None, None])
+    with pytest.raises(ValueError, match="VER's lap 12"):
+        check_lap_choices(["VER", "VER"], [12, 12])

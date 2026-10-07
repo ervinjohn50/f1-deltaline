@@ -32,13 +32,32 @@ def parse_lap_choice(value):
     return int(value)
 
 
+def resolve_drivers(names):
+    """Two driver codes from one or two given; one driver means compare two of their laps."""
+    if len(names) not in (1, 2):
+        raise ValueError(f"expected one or two drivers, got {len(names)}")
+    drivers = [name.upper() for name in names]
+    return drivers * 2 if len(drivers) == 1 else drivers
+
+
+def check_lap_choices(drivers, lap_choices):
+    """Catch comparing a lap with itself before any data is loaded."""
+    if drivers[0] != drivers[1]:
+        return
+    if lap_choices[0] == lap_choices[1]:
+        which = "fastest lap" if lap_choices[0] is None else f"lap {lap_choices[0]}"
+        raise ValueError(f"both laps would be {drivers[0]}'s {which}. Choose two different "
+                         f"laps, e.g. --laps 5 40 (use --list-laps to see them)")
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Compare two drivers' laps.")
     parser.add_argument("--year", type=int, required=True)
     parser.add_argument("--event", required=True, help="Event name or round, e.g. Monza or 16")
     parser.add_argument("--session", default="Q", help="R, Q, S, FP1, FP2, FP3 (default Q)")
-    parser.add_argument("--drivers", nargs=2, required=True, metavar=("A", "B"),
-                        help="Driver abbreviations, e.g. VER HAM")
+    parser.add_argument("--drivers", nargs="+", required=True, metavar="DRIVER",
+                        help="Two driver abbreviations, e.g. VER HAM, or one driver with "
+                             "--laps to compare two of their laps, e.g. VER --laps 5 40")
     parser.add_argument("--laps", nargs=2, type=parse_lap_choice, metavar=("LAP_A", "LAP_B"),
                         default=[None, None],
                         help="Lap number for each driver, or 'fastest' (default: both fastest)")
@@ -52,13 +71,19 @@ def parse_args():
 def main():
     args = parse_args()
     event = int(args.event) if args.event.isdigit() else args.event
-    drivers = [d.upper() for d in args.drivers]
+    try:
+        drivers = resolve_drivers(args.drivers)
+        if not args.list_laps:
+            check_lap_choices(drivers, args.laps)
+    except ValueError as error:
+        raise SystemExit(f"Error: {error}")
+    same_driver = drivers[0] == drivers[1]
 
     print(f"Loading {args.year} {event} {args.session} (first load can take a minute)...")
     session = load_session(args.year, event, args.session)
 
     if args.list_laps:
-        for driver in drivers:
+        for driver in dict.fromkeys(drivers):  # each driver once, in order
             print_laps(session.laps, driver)
         return
 
@@ -66,6 +91,10 @@ def main():
         laps = [pick_lap(session.laps, d, n) for d, n in zip(drivers, args.laps)]
     except ValueError as error:
         raise SystemExit(f"Error: {error}")
+    # e.g. --drivers VER --laps fastest 33 when lap 33 is the fastest
+    if same_driver and laps[0]["LapNumber"] == laps[1]["LapNumber"]:
+        raise SystemExit(f"Error: both laps are {drivers[0]}'s lap "
+                         f"{int(laps[0]['LapNumber'])}. Choose two different laps.")
     tels = [lap_telemetry(lap) for lap in laps]
     lap_times = [lap["LapTime"].total_seconds() for lap in laps]
     descriptions = [describe_lap(lap) for lap in laps]
@@ -76,9 +105,10 @@ def main():
             print(f"  Note: this is an in-lap or out-lap, so part of it is in the pit lane "
                   f"and the comparison may be misleading.")
 
-    # Name each lap by driver, adding the lap number when laps were chosen by hand.
+    # Name each lap by driver, adding the lap number when laps were chosen by hand
+    # (always the case for one driver, since that's the only way to tell the laps apart).
     chose_laps = any(n is not None for n in args.laps)
-    labels = [f"{d} L{int(lap['LapNumber'])}" if chose_laps else d
+    labels = [f"{d} L{int(lap['LapNumber'])}" if chose_laps or same_driver else d
               for d, lap in zip(drivers, laps)]
     legend_labels = [f"{d}  {format_lap_time(t)}  ({desc})"
                      for d, t, desc in zip(drivers, lap_times, descriptions)]
@@ -103,7 +133,8 @@ def main():
 
     won = np.bincount(winners, minlength=2)
     gap = lap_times[1] - lap_times[0]
-    print(f"{labels[0]}: {won[0]} mini-sectors  |  {labels[1]}: {won[1]} mini-sectors")
+    sectors = [f"{n} mini-sector{'s' if n != 1 else ''}" for n in won]
+    print(f"{labels[0]}: {sectors[0]}  |  {labels[1]}: {sectors[1]}")
     print(f"Lap time gap: {labels[0]} {'ahead' if gap > 0 else 'behind'} by {abs(gap):.3f}s")
 
     which = f"{labels[0]} vs {labels[1]}" if chose_laps else \

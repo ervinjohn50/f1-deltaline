@@ -36,12 +36,18 @@ uv run main.py --year 2024 --event Monza --session R --drivers LEC PIA --list-la
 uv run main.py --year 2024 --event Monza --session R --drivers LEC PIA --laps 40 40
 ```
 
+Compare two laps by the same driver, e.g. worn mediums against new hards:
+
+```bash
+uv run main.py --year 2024 --event Monza --session R --drivers LEC --laps 14 17
+```
+
 | Option | Description |
 |---|---|
 | `--year` | Season, e.g. `2024` (telemetry is available from 2018) |
 | `--event` | Event name or round number, e.g. `Monza` or `16` |
 | `--session` | `R`, `Q`, `S`, `FP1`, `FP2`, `FP3` (default `Q`) |
-| `--drivers` | Two driver abbreviations, e.g. `VER HAM` |
+| `--drivers` | Two driver abbreviations, e.g. `VER HAM`, or one with `--laps` to compare two of their laps |
 | `--laps` | Lap number for each driver, or `fastest`, e.g. `--laps 12 fastest` (default: both fastest) |
 | `--list-laps` | List both drivers' laps and exit |
 | `--sectors` | Number of mini-sectors (default `25`) |
