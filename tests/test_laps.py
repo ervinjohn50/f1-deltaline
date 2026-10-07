@@ -4,8 +4,9 @@ import pandas as pd
 import pytest
 from fastf1.core import Laps
 
-from f1_deltaline.data import describe_lap, is_pit_lap, pick_lap
-from main import check_lap_choices, parse_lap_choice, resolve_drivers
+from f1_deltaline.data import describe_lap, is_pit_lap, pick_lap, theoretical_best
+from main import (check_lap_choices, parse_lap_choice, resolve_drivers,
+                  theoretical_best_summary)
 
 
 def seconds(values):
@@ -13,19 +14,25 @@ def seconds(values):
     return pd.to_timedelta(values, unit="s")
 
 
-def make_laps():
-    """A driver's short qualifying run: out-lap, two timed laps, in-lap."""
+def make_laps(deleted=(), sector1=(None, 28.6, 28.7, 28.4)):
+    """A driver's short qualifying run: out-lap, two timed laps, in-lap.
+
+    Lap 3 is the fastest, but the best sector 1 is on lap 4.
+    """
     return Laps(pd.DataFrame({
         "Driver": ["HAM"] * 4,
         "DriverNumber": ["44"] * 4,
         "LapNumber": [1.0, 2.0, 3.0, 4.0],
         "LapTime": seconds([None, 87.5, 86.2, 95.0]),
+        "Sector1Time": seconds(list(sector1)),
+        "Sector2Time": seconds([31.0, 29.9, 29.0, 31.0]),
+        "Sector3Time": seconds([30.0, 29.0, 28.5, 35.6]),
         "Compound": ["SOFT", "SOFT", "SOFT", "SOFT"],
         "TyreLife": [1.0, 2.0, 3.0, 4.0],
         "PitOutTime": seconds([600, None, None, None]),
         "PitInTime": seconds([None, None, None, 1000]),
         "IsPersonalBest": [False, True, True, False],
-        "Deleted": [False, False, False, False],
+        "Deleted": [n in deleted for n in (1, 2, 3, 4)],
     }))
 
 
@@ -91,3 +98,35 @@ def test_check_lap_choices_rejects_same_lap_twice():
         check_lap_choices(["VER", "VER"], [None, None])
     with pytest.raises(ValueError, match="VER's lap 12"):
         check_lap_choices(["VER", "VER"], [12, 12])
+
+
+def test_theoretical_best_uses_best_sector_from_any_lap():
+    best = theoretical_best(make_laps(), "HAM")
+    assert best["sectors"] == [(28.4, 4), (29.0, 3), (28.5, 3)]
+    assert best["total"] == pytest.approx(85.9)
+
+
+def test_theoretical_best_skips_deleted_laps():
+    best = theoretical_best(make_laps(deleted=[4]), "HAM")
+    assert best["sectors"][0] == (28.6, 2)
+    assert best["total"] == pytest.approx(86.1)
+
+
+def test_theoretical_best_missing_sector_returns_none():
+    laps = make_laps()
+    laps["Sector3Time"] = pd.NaT
+    assert theoretical_best(laps, "HAM") is None
+
+
+def test_theoretical_best_summary_time_left():
+    printed, notes = theoretical_best_summary(make_laps(), ["HAM", "HAM"])
+    assert len(printed) == 1  # same driver twice is listed once
+    assert printed[0] == ("HAM theoretical best: 1:25.900 (S1 lap 4, S2 lap 3, S3 lap 3), "
+                          "0.300s quicker than their fastest lap")
+    assert notes == ["HAM theoretical best 1:25.900: 0.300s quicker than their fastest lap"]
+
+
+def test_theoretical_best_summary_all_sectors_on_fastest_lap():
+    laps = make_laps(deleted=[4], sector1=[None, 28.9, 28.7, 28.4])
+    printed, _ = theoretical_best_summary(laps, ["HAM"])
+    assert printed[0].endswith("all three best sectors on their fastest lap")

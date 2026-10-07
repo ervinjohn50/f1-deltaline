@@ -15,7 +15,8 @@ def load_session(year, event, session_type):
     CACHE_DIR.mkdir(exist_ok=True)
     fastf1.Cache.enable_cache(str(CACHE_DIR))
     session = fastf1.get_session(year, event, session_type)
-    session.load(laps=True, telemetry=True, weather=False, messages=False)
+    # Race control messages are needed to know which laps were deleted (track limits).
+    session.load(laps=True, telemetry=True, weather=False, messages=True)
     return session
 
 
@@ -41,6 +42,25 @@ def pick_lap(laps, driver, lap_number=None):
         raise ValueError(f"{driver} lap {lap_number} has no lap time (usually an out lap "
                          f"or an unfinished lap). Use --list-laps to see timed laps.")
     return lap
+
+
+def theoretical_best(laps, driver):
+    """A driver's best sector 1, 2 and 3 from any laps, added up.
+
+    Returns {"total": seconds, "sectors": [(seconds, lap_number), ...]}, or None
+    if any sector has no time. Deleted laps (track limits) are left out.
+    """
+    driver_laps = laps.pick_drivers(driver)
+    if "Deleted" in driver_laps:
+        driver_laps = driver_laps[driver_laps["Deleted"] != True]  # noqa: E712 (None = unknown)
+    sectors = []
+    for column in ("Sector1Time", "Sector2Time", "Sector3Time"):
+        times = driver_laps[column].dropna()
+        if times.empty:
+            return None
+        best = times.idxmin()
+        sectors.append((times[best].total_seconds(), int(driver_laps.loc[best, "LapNumber"])))
+    return {"total": sum(seconds for seconds, _ in sectors), "sectors": sectors}
 
 
 def is_pit_lap(lap):

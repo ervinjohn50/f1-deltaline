@@ -24,7 +24,7 @@ def driver_colors(session, driver_a, driver_b):
 
 
 def plot_comparison(track, sample_winners, distance_m, delta, traces,
-                    labels, colors, legend_labels, title, corners=()):
+                    labels, colors, legend_labels, title, corners=(), note=""):
     """Map on the left; gap, speed, throttle and brake stacked on the right.
 
     track: telemetry with X/Y for drawing the circuit.
@@ -34,6 +34,7 @@ def plot_comparison(track, sample_winners, distance_m, delta, traces,
     traces: {"Speed (km/h)": (values_a, values_b), ...}
     labels: short name for each lap, e.g. "LEC" or "VER L5".
     legend_labels: full legend text for each lap, including lap time.
+    note: optional extra lines shown under the legend.
     """
     fig = plt.figure(figsize=(16, 9), facecolor=BACKGROUND)
     # Gap chart first, then one row per trace; brake is on/off so it gets less height.
@@ -42,10 +43,10 @@ def plot_comparison(track, sample_winners, distance_m, delta, traces,
                     height_ratios=height_ratios, wspace=0.08, hspace=0.12)
 
     # Left column: map on top, legend in its own row below so it never covers the track.
-    left = GridSpecFromSubplotSpec(2, 1, subplot_spec=grid[:, 0], height_ratios=[5, 1],
+    left = GridSpecFromSubplotSpec(2, 1, subplot_spec=grid[:, 0], height_ratios=[4.2, 1.3],
                                    hspace=0)
     draw_track(fig.add_subplot(left[0]), track, sample_winners, colors, corners)
-    draw_legend(fig.add_subplot(left[1]), colors, legend_labels)
+    draw_legend(fig.add_subplot(left[1]), colors, legend_labels, note)
 
     gap_ax = fig.add_subplot(grid[0, 1])
     draw_delta(gap_ax, distance_m, delta, labels, colors)
@@ -90,15 +91,19 @@ def draw_track(ax, track, sample_winners, colors, corners):
     ax.axis("off")
 
 
-def draw_legend(ax, colors, legend_labels):
+def draw_legend(ax, colors, legend_labels, note=""):
     ax.axis("off")
     handles = [
         Line2D([0], [0], color=color, lw=6, label=label)
         for color, label in zip(colors, legend_labels)
     ]
-    ax.legend(handles=handles, loc="center", facecolor=BACKGROUND, edgecolor="#444",
+    ax.legend(handles=handles, loc="upper center" if note else "center",
+              facecolor=BACKGROUND, edgecolor="#444",
               labelcolor=TEXT, fontsize=11, title="Faster in mini-sector",
               title_fontsize=9).get_title().set_color(MUTED)
+    if note:
+        ax.text(0.5, 0.0, note, transform=ax.transAxes, ha="center", va="bottom",
+                color=MUTED, fontsize=9, linespacing=1.6)
 
 
 def draw_delta(ax, distance_m, delta, labels, colors):

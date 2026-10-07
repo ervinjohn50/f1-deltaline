@@ -16,7 +16,7 @@ import pandas as pd
 from f1_deltaline.compare import (resample, sector_index, sector_times, sector_winners,
                                   time_delta)
 from f1_deltaline.data import (corners, describe_lap, is_pit_lap, lap_telemetry, load_session,
-                               pick_lap)
+                               pick_lap, theoretical_best)
 from f1_deltaline.plot import driver_colors, format_lap_time, plot_comparison
 
 OUTPUT_DIR = Path(__file__).resolve().parent / "output"
@@ -137,12 +137,20 @@ def main():
     print(f"{labels[0]}: {sectors[0]}  |  {labels[1]}: {sectors[1]}")
     print(f"Lap time gap: {labels[0]} {'ahead' if gap > 0 else 'behind'} by {abs(gap):.3f}s")
 
+    printed, note_lines = theoretical_best_summary(session.laps, drivers)
+    print()
+    for line in printed:
+        print(line)
+    if session.name in ("Race", "Sprint"):
+        print("  Note: in a race the best sectors can come from very different fuel loads "
+              "and tyres, so treat this as rough.")
+
     which = f"{labels[0]} vs {labels[1]}" if chose_laps else \
         f"{drivers[0]} vs {drivers[1]}, fastest laps"
     title = f"{session.event['EventName']} {session.event.year} · {session.name} · {which}"
     fig = plot_comparison(tels[0], sample_winners, distance_m, delta, traces, labels,
                           driver_colors(session, *drivers), legend_labels, title,
-                          corners(session))
+                          corners(session), note="\n".join(note_lines))
 
     OUTPUT_DIR.mkdir(exist_ok=True)
     names = [f"{d}_L{int(lap['LapNumber'])}" for d, lap in zip(drivers, laps)]
@@ -152,6 +160,27 @@ def main():
 
     if not args.no_show:
         plt.show()
+
+
+def theoretical_best_summary(laps, drivers):
+    """Lines for the terminal and short lines for the image, one per driver."""
+    printed, notes = [], []
+    for driver in dict.fromkeys(drivers):  # each driver once
+        best = theoretical_best(laps, driver)
+        if best is None:
+            printed.append(f"{driver} theoretical best: not available (missing sector times)")
+            continue
+        fastest = pick_lap(laps, driver)
+        best_time = format_lap_time(best["total"])
+        from_laps = ", ".join(f"S{i} lap {lap}" for i, (_, lap) in enumerate(best["sectors"], 1))
+        if all(lap == fastest["LapNumber"] for _, lap in best["sectors"]):
+            result = "all three best sectors on their fastest lap"
+        else:
+            left = fastest["LapTime"].total_seconds() - best["total"]
+            result = f"{left:.3f}s quicker than their fastest lap"
+        printed.append(f"{driver} theoretical best: {best_time} ({from_laps}), {result}")
+        notes.append(f"{driver} theoretical best {best_time}: {result}")
+    return printed, notes
 
 
 def print_laps(laps, driver):
@@ -172,6 +201,8 @@ def print_laps(laps, driver):
             notes.append("in-lap")
         if lap["LapNumber"] == fastest_number:
             notes.append("fastest")
+        if "Deleted" in lap and lap["Deleted"] == True:  # noqa: E712 (None = unknown)
+            notes.append("deleted (track limits)")
         print(f"  {describe_lap(lap):<32} {time:>9}   {', '.join(notes)}")
 
 

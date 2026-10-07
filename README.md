@@ -9,6 +9,8 @@ choose) and shows:
 - **Gap chart**: the running time gap around the lap, so you can see where each
   driver gained and lost time
 - **Speed, throttle and brake** for both drivers, lined up by distance
+- **Theoretical best lap**: each driver's best sector 1, 2 and 3 from the whole
+  session added up, and how much quicker that is than their fastest lap
 
 ![Leclerc vs Norris, Monza 2024 qualifying](docs/example.png)
 
@@ -28,8 +30,8 @@ Compare two drivers' fastest laps:
 uv run main.py --year 2024 --event Monza --session Q --drivers LEC NOR
 ```
 
-List each driver's laps (lap time, tyre, in/out-laps, fastest), then compare
-specific ones:
+List each driver's laps (lap time, tyre, in/out-laps, fastest, deleted), then
+compare specific ones:
 
 ```bash
 uv run main.py --year 2024 --event Monza --session R --drivers LEC PIA --list-laps
@@ -56,6 +58,10 @@ uv run main.py --year 2024 --event Monza --session R --drivers LEC --laps 14 17
 In-laps and out-laps can be compared, but part of them is in the pit lane, so
 F1 Deltaline prints a warning. Laps without a lap time (usually out-laps in
 qualifying) can't be compared.
+
+The theoretical best leaves out laps deleted for track limits. It's most
+meaningful in qualifying and practice; in a race the best sectors can come from
+very different fuel loads and tyres, so F1 Deltaline flags it as rough.
 
 Images are saved to `output/`. Session data is cached in `.fastf1-cache/`, so
 the first load of a session is slow and later loads are fast.
