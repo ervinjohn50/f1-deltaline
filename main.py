@@ -17,6 +17,7 @@ from f1_deltaline.compare import (resample, sector_index, sector_times, sector_w
                                   time_delta)
 from f1_deltaline.data import (corners, describe_lap, is_pit_lap, lap_telemetry, load_session,
                                pick_lap, theoretical_best)
+from f1_deltaline.explain import MIN_GAIN_S, explain_lap
 from f1_deltaline.plot import driver_colors, format_lap_time, plot_comparison
 
 OUTPUT_DIR = Path(__file__).resolve().parent / "output"
@@ -145,12 +146,23 @@ def main():
         print("  Note: in a race the best sectors can come from very different fuel loads "
               "and tyres, so treat this as rough.")
 
+    corner_list = corners(session)
+    key_moments = explain_lap(distance_m, delta, traces, corner_list, labels)
+    print("\nWhere the lap was won and lost:")
+    if key_moments:
+        for moment in key_moments:
+            print(f"  {moment['text']}")
+    elif not corner_list:
+        print("  Not available: no corner data for this track.")
+    else:
+        print(f"  No single part of the lap changed the gap by {MIN_GAIN_S}s or more.")
+
     which = f"{labels[0]} vs {labels[1]}" if chose_laps else \
         f"{drivers[0]} vs {drivers[1]}, fastest laps"
     title = f"{session.event['EventName']} {session.event.year} · {session.name} · {which}"
     fig = plot_comparison(tels[0], sample_winners, distance_m, delta, traces, labels,
                           driver_colors(session, *drivers), legend_labels, title,
-                          corners(session), note="\n".join(note_lines))
+                          corner_list, note="\n".join(note_lines), key_moments=key_moments)
 
     OUTPUT_DIR.mkdir(exist_ok=True)
     names = [f"{d}_L{int(lap['LapNumber'])}" for d, lap in zip(drivers, laps)]

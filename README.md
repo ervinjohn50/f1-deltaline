@@ -11,8 +11,17 @@ choose) and shows:
 - **Speed, throttle and brake** for both drivers, lined up by distance
 - **Theoretical best lap**: each driver's best sector 1, 2 and 3 from the whole
   session added up, and how much quicker that is than their fastest lap
+- **Where the lap was won and lost**: the three corners where the gap changed
+  most, in plain English, numbered on the gap chart
 
 ![Leclerc vs Norris, Monza 2024 qualifying](docs/example.png)
+
+```
+Where the lap was won and lost:
+  NOR gained 0.068s at turn 6: 3 km/h faster at the slowest point
+  NOR gained 0.066s at turn 7: back on full throttle 17 m earlier
+  LEC gained 0.058s at the run to turns 1-2: 4 km/h faster at the end of the straight
+```
 
 ## Setup
 
@@ -78,6 +87,28 @@ the first load of a session is slow and later loads are fast.
 5. **Gap and traces**: resample both laps onto a shared grid of 1,000 points
    along the lap. The gap at each point is B's elapsed time minus A's, so where
    the line rises A is gaining and where it falls B is.
+6. **Where the lap was won and lost**: split the lap into zones, one per corner
+   (corners less than 200 m apart, like a chicane, count as one). Each zone runs
+   from the fastest point before its corner to the fastest point before the
+   next, so it covers braking, the corner, the exit and the following straight.
+   The gap change across each zone is measured, and for the three biggest the
+   faster driver's braking point, slowest speed, full-throttle point and top
+   speed are compared with the other driver's.
+
+### Why zone edges are at the fastest points
+
+A small distance error costs little time at high speed and a lot at low speed,
+so the gap is most reliable at the end of a straight. Putting zone edges there
+means the gap change across a zone isn't thrown off by the short spikes the gap
+chart can show inside slow corners. Corners with no real straight between them
+(the fastest point between them is under 70% of the lap's top speed) are merged
+into one zone for the same reason. The zone gains always add up to the final
+lap time gap.
+
+Differences are only mentioned when they're big enough to trust given the data:
+at least 0.02s gained, 10 m for braking and throttle points (car data arrives
+about every 20 m at top speed), and 3 km/h for speeds. If none apply, the
+summary says there's no single clear cause.
 
 ### Lap distance
 

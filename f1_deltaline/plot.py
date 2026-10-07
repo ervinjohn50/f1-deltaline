@@ -24,7 +24,8 @@ def driver_colors(session, driver_a, driver_b):
 
 
 def plot_comparison(track, sample_winners, distance_m, delta, traces,
-                    labels, colors, legend_labels, title, corners=(), note=""):
+                    labels, colors, legend_labels, title, corners=(), note="",
+                    key_moments=()):
     """Map on the left; gap, speed, throttle and brake stacked on the right.
 
     track: telemetry with X/Y for drawing the circuit.
@@ -35,8 +36,10 @@ def plot_comparison(track, sample_winners, distance_m, delta, traces,
     labels: short name for each lap, e.g. "LEC" or "VER L5".
     legend_labels: full legend text for each lap, including lap time.
     note: optional extra lines shown under the legend.
+    key_moments: biggest gains from explain_lap, numbered on the gap chart and
+        written out along the bottom.
     """
-    fig = plt.figure(figsize=(16, 9), facecolor=BACKGROUND)
+    fig = plt.figure(figsize=(16, 10), facecolor=BACKGROUND)
     # Gap chart first, then one row per trace; brake is on/off so it gets less height.
     height_ratios = [1.3] + [0.5 if "Brake" in label else 1.0 for label in traces]
     grid = GridSpec(len(height_ratios), 2, figure=fig, width_ratios=[1, 1.35],
@@ -66,10 +69,37 @@ def plot_comparison(track, sample_winners, distance_m, delta, traces,
     all_axes[-1].set_xlabel("Distance (m)", color=MUTED, fontsize=9)
     gap_ax.set_xlim(distance_m[0], distance_m[-1])
     label_corners_on_axis(gap_ax, corners)
+    mark_key_moments(gap_ax, key_moments, colors)
+    write_key_moments(fig, key_moments, colors)
 
     fig.suptitle(title, color=TEXT, fontsize=14, y=0.97)
-    fig.subplots_adjust(left=0.02, right=0.98, top=0.88, bottom=0.07)
+    fig.subplots_adjust(left=0.02, right=0.98, top=0.89, bottom=0.2 if key_moments else 0.07)
     return fig
+
+
+def mark_key_moments(ax, key_moments, colors):
+    """Shade each key zone on the gap chart in the gaining driver's colour, numbered."""
+    for number, moment in enumerate(key_moments, 1):
+        zone, color = moment["zone"], colors[moment["gainer"]]
+        ax.axvspan(zone["start"], zone["end"], color=color, alpha=0.12, lw=0, zorder=0)
+        # Just below the chart, where the hidden distance labels would be, so the
+        # number never sits on top of the gap line.
+        ax.text((zone["start"] + zone["end"]) / 2, -0.07, str(number),
+                transform=ax.get_xaxis_transform(), color=color, fontsize=12,
+                fontweight="bold", ha="center", va="center", clip_on=False)
+
+
+def write_key_moments(fig, key_moments, colors):
+    """Numbered plain-English lines along the bottom of the figure."""
+    if not key_moments:
+        return
+    top = 0.115
+    fig.text(0.02, top, "Where the lap was won and lost", color=MUTED, fontsize=10)
+    for number, moment in enumerate(key_moments, 1):
+        y = top - 0.03 * number
+        fig.text(0.02, y, str(number), color=colors[moment["gainer"]], fontsize=11,
+                 fontweight="bold")
+        fig.text(0.035, y, moment["text"], color=TEXT, fontsize=11)
 
 
 def draw_track(ax, track, sample_winners, colors, corners):
