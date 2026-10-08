@@ -9,6 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # System libraries Qt needs on Linux, even without a screen (the app
+      # tests run with QT_QPA_PLATFORM=offscreen, set in tests/conftest.py).
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libopengl0 libxkbcommon0 libfontconfig1 libdbus-1-3
       # setup-uv only publishes full version tags, not a short v10 tag.
       - uses: astral-sh/setup-uv@v10.2.0
       # Installs the Python version from .python-version and the exact

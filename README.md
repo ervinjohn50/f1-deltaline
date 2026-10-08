@@ -5,7 +5,8 @@
 See exactly where on track one driver was faster than another.
 
 F1 Deltaline loads two laps (each driver's fastest by default, or any laps you
-choose) and shows:
+choose) and shows the comparison in a desktop app or as an image from the
+command line:
 
 - **Track map** coloured by who was quicker in each mini-sector, with corner numbers
 - **Gap chart**: the running time gap around the lap, so you can see where each
@@ -33,7 +34,33 @@ Requires [uv](https://docs.astral.sh/uv/).
 uv sync
 ```
 
-## Usage
+## Desktop app
+
+```bash
+uv run app.py
+```
+
+Pick a season, event and session and press **Load**. The top two drivers'
+fastest laps are compared straight away; choose any two drivers and laps and
+press **Compare** to change it. Hover over the track map or charts to see both
+drivers' speed, throttle and the gap at that point. The toolbar zooms, pans
+and saves the figure.
+
+The first load of a session downloads its data, which can take a minute; the
+window stays usable while it loads, and later loads come from the cache.
+
+To quit, close the window (or press Ctrl+C in the terminal). If a download is
+still running, the app finishes it first so the data cache isn't left half
+written, and says so in the terminal; Ctrl+C quits straight away.
+
+If F1's data for a session has gaps that affect the comparison, such as no
+position data (so no track map), an amber **data note** appears in the status
+bar; hover over it to read all of them. The command line prints the same
+notes under "Data notes".
+
+![The desktop app, hovering at Lesmo 1](docs/app.png)
+
+## Command line
 
 Compare two drivers' fastest laps:
 
@@ -124,7 +151,7 @@ two drivers' readings fall at different moments, those errors differ and show
 up as false spikes in the gap chart at slow corners. Switching to the trapezoid
 rule cut the worst spike at Monza 2024 (LEC vs NOR) from 0.18s to 0.135s.
 
-### Known limitation
+### Known limitations
 
 Some short spikes remain in slow corners (e.g. Monza turns 4–5). Car data
 arrives about four times a second, so at 300 km/h a car travels ~20 m between
@@ -132,11 +159,30 @@ readings. Part of what's left may be real (different braking points and
 minimum speeds) and part is this sampling limit; the data can't fully tell them
 apart. The overall trend and the gap at the finish line are accurate.
 
+Some sessions have gaps in F1's position data (where each car is on track).
+In the 2026 Monaco race, for example, it stops partway through, so most
+drivers' fastest laps have none. Those laps are compared using car data alone,
+which gives the same results (checked on a full lap: same distance, same gap),
+but the track map shows "unavailable". Corner positions also need position
+data, so for those sessions they're taken from another session of the same
+event, usually qualifying, which may mean one extra download.
+
 ## Tests
 
 ```bash
 uv run pytest
 ```
+
+The tests don't download any race data: the analysis is tested on made-up laps
+with known answers, and the desktop app (with [pytest-qt](https://pytest-qt.readthedocs.io/))
+is given fake loaders and runs without a screen.
+
+## Engineering notes
+
+[docs/engineering-notes.md](docs/engineering-notes.md) covers the problems found
+while building F1 Deltaline and how they were fixed and checked, from the false
+spikes in FastF1's distance data to sessions where F1's position data stops
+partway through.
 
 ## Credits
 

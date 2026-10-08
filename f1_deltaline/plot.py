@@ -13,6 +13,7 @@ TEXT = "#f0f0f0"
 MUTED = "#8a8a99"
 GRID = "#2c2c3a"
 CORNER_LABEL_OFFSET = 600  # track units are 1/10 m, so about 60 m off the racing line
+FIGSIZE = (16, 10)
 
 
 def driver_colors(session, driver_a, driver_b):
@@ -25,7 +26,7 @@ def driver_colors(session, driver_a, driver_b):
 
 def plot_comparison(track, sample_winners, distance_m, delta, traces,
                     labels, colors, legend_labels, title, corners=(), note="",
-                    key_moments=()):
+                    key_moments=(), fig=None):
     """Map on the left; gap, speed, throttle and brake stacked on the right.
 
     track: telemetry with X/Y for drawing the circuit.
@@ -38,8 +39,17 @@ def plot_comparison(track, sample_winners, distance_m, delta, traces,
     note: optional extra lines shown under the legend.
     key_moments: biggest gains from explain_lap, numbered on the gap chart and
         written out along the bottom.
+    fig: an existing figure to draw into (cleared first), e.g. one shown in the
+        desktop app; a new one is created if not given.
+
+    Returns (fig, axes), where axes is {"track": map axis, "charts": [gap,
+    speed, throttle, brake axes]}.
     """
-    fig = plt.figure(figsize=(16, 10), facecolor=BACKGROUND)
+    if fig is None:
+        fig = plt.figure(figsize=FIGSIZE, facecolor=BACKGROUND)
+    else:
+        fig.clear()
+        fig.set_facecolor(BACKGROUND)
     # Gap chart first, then one row per trace; brake is on/off so it gets less height.
     height_ratios = [1.3] + [0.5 if "Brake" in label else 1.0 for label in traces]
     grid = GridSpec(len(height_ratios), 2, figure=fig, width_ratios=[1, 1.35],
@@ -48,7 +58,8 @@ def plot_comparison(track, sample_winners, distance_m, delta, traces,
     # Left column: map on top, legend in its own row below so it never covers the track.
     left = GridSpecFromSubplotSpec(2, 1, subplot_spec=grid[:, 0], height_ratios=[4.2, 1.3],
                                    hspace=0)
-    draw_track(fig.add_subplot(left[0]), track, sample_winners, colors, corners)
+    track_ax = fig.add_subplot(left[0])
+    draw_track(track_ax, track, sample_winners, colors, corners)
     draw_legend(fig.add_subplot(left[1]), colors, legend_labels, note)
 
     gap_ax = fig.add_subplot(grid[0, 1])
@@ -74,7 +85,7 @@ def plot_comparison(track, sample_winners, distance_m, delta, traces,
 
     fig.suptitle(title, color=TEXT, fontsize=14, y=0.97)
     fig.subplots_adjust(left=0.02, right=0.98, top=0.89, bottom=0.2 if key_moments else 0.07)
-    return fig
+    return fig, {"track": track_ax, "charts": all_axes}
 
 
 def mark_key_moments(ax, key_moments, colors):
@@ -103,11 +114,18 @@ def write_key_moments(fig, key_moments, colors):
 
 
 def draw_track(ax, track, sample_winners, colors, corners):
+    ax.set_facecolor(BACKGROUND)
+    if np.isnan(np.asarray(track["X"], dtype=float)).all():
+        # No position data for this lap (a gap in F1's data); the charts still work.
+        ax.axis("off")
+        ax.text(0.5, 0.5, "Track map unavailable:\nno position data for this lap",
+                transform=ax.transAxes, ha="center", va="center", color=MUTED, fontsize=11,
+                linespacing=1.6)
+        return
     points = np.column_stack([track["X"], track["Y"]]).reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
     segment_colors = [colors[w] for w in sample_winners[:-1]]
 
-    ax.set_facecolor(BACKGROUND)
     ax.add_collection(LineCollection(segments, colors=segment_colors, linewidths=6,
                                      capstyle="round"))
     for corner in corners:

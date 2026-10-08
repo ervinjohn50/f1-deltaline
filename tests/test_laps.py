@@ -5,8 +5,9 @@ import pytest
 from fastf1.core import Laps
 
 from f1_deltaline.data import describe_lap, is_pit_lap, pick_lap, theoretical_best
-from main import (check_lap_choices, parse_lap_choice, resolve_drivers,
-                  theoretical_best_summary)
+from f1_deltaline.analysis import (check_lap_choices, resolve_drivers,
+                                   theoretical_best_summary)
+from main import parse_lap_choice
 
 
 def seconds(values):
