@@ -17,14 +17,7 @@ command line:
 - **Where the lap was won and lost**: the three corners where the gap changed
   most, in plain English, numbered on the gap chart
 
-![Leclerc vs Norris, Monza 2024 qualifying](docs/example.png)
-
-```
-Where the lap was won and lost:
-  NOR gained 0.068s at turn 6: 3 km/h faster at the slowest point
-  NOR gained 0.066s at turn 7: back on full throttle 17 m earlier
-  LEC gained 0.058s at the run to turns 1-2: 4 km/h faster at the end of the straight
-```
+![The desktop app: comparing Norris and Piastri, hovering around the lap, then switching to Leclerc vs Norris (Monza 2024 qualifying)](docs/demo.gif)
 
 ## Setup
 
@@ -58,14 +51,23 @@ position data (so no track map), an amber **data note** appears in the status
 bar; hover over it to read all of them. The command line prints the same
 notes under "Data notes".
 
-![The desktop app, hovering at Lesmo 1](docs/app.png)
-
 ## Command line
 
 Compare two drivers' fastest laps:
 
 ```bash
 uv run main.py --year 2024 --event Monza --session Q --drivers LEC NOR
+```
+
+It prints a summary and saves the figure as an image:
+
+![Leclerc vs Norris, Monza 2024 qualifying](docs/example.png)
+
+```
+Where the lap was won and lost:
+  NOR gained 0.068s at turn 6: 3 km/h faster at the slowest point
+  NOR gained 0.066s at turn 7: back on full throttle 17 m earlier
+  LEC gained 0.058s at the run to turns 1-2: 4 km/h faster at the end of the straight
 ```
 
 List each driver's laps (lap time, tyre, in/out-laps, fastest, deleted), then
